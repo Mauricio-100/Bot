@@ -1,16 +1,20 @@
+
 #!/bin/sh
-# Script d'installation pour Bot-Shell-Pro
+# Script d'installation pour Bot-Shell-Prestige
 
 echo "--- Mise à jour de la liste des paquets (apk) ---"
 apk update
 
+echo "--- Mise a jour de tous les pakage du mobile (apk) ---"
+apk upgrade
+
 echo "\n--- Installation des dépendances requises ---"
-# curl : pour faire des requêtes web (API)
-# jq : pour lire les réponses JSON des API
-# whois : pour le module réseau
-# git : pour la gestion de version de votre projet
-apk add curl jq whois git
+# curl: pour les API web
+# jq: pour lire le JSON des API
+# whois: pour le module réseau
+# procps-ng: pour les commandes 'top' et 'free' améliorées (moniteur système)
+apk add curl jq whois procps-ng
 
 echo "\n--- Installation terminée ! ---"
-echo "Tous les outils nécessaires pour le bot sont maintenant installés."
+echo "Tous les outils pour la version Prestige sont installés."
 echo "Vous pouvez lancer le bot avec : ./bot.sh"

@@ -1,129 +1,91 @@
 #!/bin/sh
-# Bot-Shell-Titanium - v5.0 - Architecture robuste et fonctionnalités avancées
+# Bot-Shell-Omega - v8.0 - Cerveau de recherche stable et module d'apprentissage actif.
 
-# --- FICHIERS DE DONNÉES ---
+# --- FICHIERS DE CONNAISSANCES ---
 FICHIER_BLAGUES="blagues.txt"
-FICHIER_MEMOIRE="memoire.db"
-
-
-#################################################################
-# 🧠 MODULES DU CERVEAU LOCAL (STABILISÉS) 🧠                    #
-#################################################################
+CORPUS_APPRENTISSAGE="corpus.db"
 
 # 💬 Module de conversation
 module_conversation() {
-  case "$1" in
-    *bonjour*|*salut*) typing "Bot-Shell-Titanium. Systèmes opérationnels." ;;
-    *merci*) typing "À votre service." ;;
-  esac
+  typing "Bot-Shell-Omega. Prêt à apprendre et à assister."
 }
 
-# 😂 Module de blagues
-module_blague() {
-  [ -f "$FICHIER_BLAGUES" ] && typing "$(shuf -n 1 $FICHIER_BLAGUES)" || typing "Archive de blagues non trouvée."
-}
-
-# 🖥️ Module Moniteur Système (Zéro Dépendance)
-module_moniteur_systeme() {
-  if echo "$1" | grep -q "cpu"; then
-    typing "--- Analyse CPU (charge sur 1s) ---"
-    # Lecture directe depuis /proc/stat pour calculer l'utilisation
-    OLD_STATS=$(head -n 1 /proc/stat)
-    sleep 1
-    NEW_STATS=$(head -n 1 /proc/stat)
-    
-    OLD_USER=$(echo $OLD_STATS | awk '{print $2}')
-    OLD_NICE=$(echo $OLD_STATS | awk '{print $3}')
-    OLD_SYSTEM=$(echo $OLD_STATS | awk '{print $4}')
-    OLD_IDLE=$(echo $OLD_STATS | awk '{print $5}')
-    
-    NEW_USER=$(echo $NEW_STATS | awk '{print $2}')
-    NEW_NICE=$(echo $NEW_STATS | awk '{print $3}')
-    NEW_SYSTEM=$(echo $NEW_STATS | awk '{print $4}')
-    NEW_IDLE=$(echo $NEW_STATS | awk '{print $5}')
-    
-    OLD_TOTAL=$(($OLD_USER + $OLD_NICE + $OLD_SYSTEM + $OLD_IDLE))
-    NEW_TOTAL=$(($NEW_USER + $NEW_NICE + $NEW_SYSTEM + $NEW_IDLE))
-    
-    DIFF_IDLE=$(($NEW_IDLE - $OLD_IDLE))
-    DIFF_TOTAL=$(($NEW_TOTAL - $OLD_TOTAL))
-    
-    CPU_USAGE=$(awk "BEGIN {print 100 * (1 - ($DIFF_IDLE / $DIFF_TOTAL))}")
-    typing "Utilisation CPU actuelle : ${CPU_USAGE}%"
-
-  elif echo "$1" | grep -qE "ram|mémoire"; then
-    typing "--- Analyse Mémoire Vive (RAM) ---"
-    # Lecture directe et formatage depuis /proc/meminfo
-    MEM_TOTAL=$(grep "MemTotal" /proc/meminfo | awk '{print $2}')
-    MEM_FREE=$(grep "MemAvailable" /proc/meminfo | awk '{print $2}')
-    MEM_USED=$(($MEM_TOTAL - $MEM_FREE))
-    MEM_PERCENT=$(awk "BEGIN {print 100 * $MEM_USED / $MEM_TOTAL}")
-    typing "Utilisation RAM : ${MEM_PERCENT}% (${MEM_USED}k / ${MEM_TOTAL}k)"
-
-  elif echo "$1" | grep -q "disque"; then
-    typing "--- Analyse Espace Disque ---"
-    df -h /
-  fi
-}
-
-
-#################################################################
-# 🌍 MODULES D'INTELLIGENCE CONNECTÉE (API) 🌍                   #
-#################################################################
-
-# 📚 Module de recherche web
-module_recherche_web() {
+# 📚 Module de Recherche Principal (Wikipedia)
+module_recherche_wikipedia() {
   query=$(echo "$1" | sed -E "s/cherche |c'est quoi |qui est |définition de //i")
-  typing "Recherche web pour : $query"
-  url_query=$(echo "$query" | sed 's/ /+/g')
-  api_response=$(curl -s "https://api.duckduckgo.com/?q=${url_query}&format=json" | jq -r '.AbstractText')
-  [ -n "$api_response" ] && [ "$api_response" != "null" ] && typing "$api_response" || typing "Aucune réponse directe trouvée."
-}
+  
+  # --- ÉTAPE 1: VÉRIFIER LE CORPUS LOCAL D'ABORD ---
+  reponse_apprise=$(grep -i "^${query}:" "$CORPUS_APPRENTISSAGE" | cut -d':' -f2-)
+  if [ -n "$reponse_apprise" ]; then
+    typing "[Réponse apprise] : $reponse_apprise"
+    return
+  fi
 
-# ✨ NOUVEAU : Module "Sagesse"
-module_sagesse() {
-  typing "Je consulte les archives de la pensée..."
-  # API simple qui ne nécessite pas de clé
-  RESPONSE=$(curl -s "http://api.forismatic.com/api/1.0/?method=getQuote&format=text&lang=fr")
-  # Parfois l'API renvoie des erreurs, on les filtre
-  if ! echo "$RESPONSE" | grep -q "Forismatic"; then
-    typing "$RESPONSE"
+  # --- ÉTAPE 2: SI INCONNU, INTERROGER WIKIPEDIA ---
+  typing "Accès à l'encyclopédie centrale pour : $query"
+  url_query=$(echo "$query" | sed 's/ /_/g')
+  UA="Bot-Shell-Omega/8.0 (user-script)"
+  wiki_response=$(curl -s -A "$UA" "https://fr.wikipedia.org/api/rest_v1/page/summary/${url_query}" | jq -r '.extract')
+
+  if [ -n "$wiki_response" ] && [ "$wiki_response" != "null" ]; then
+    typing "$wiki_response"
+    
+    # --- AUTO-APPRENTISSAGE ---
+    printf "Dois-je mémoriser cette information pour '$query' ? (o/n)> "
+    read confirmation
+    if [ "$confirmation" = "o" ]; then
+      # On supprime l'ancienne entrée au cas où
+      grep -vi "^${query}:" "$CORPUS_APPRENTISSAGE" > "${CORPUS_APPRENTISSAGE}.tmp" && mv "${CORPUS_APPRENTISSAGE}.tmp" "$CORPUS_APPRENTISSAGE"
+      echo "${query}:${wiki_response}" >> "$CORPUS_APPRENTISSAGE"
+      typing "Information ajoutée au corpus."
+    fi
   else
-    typing "La fortune sourit à ceux qui attendent. Réessayez."
+    typing "Aucun article trouvé. Vous pouvez m'apprendre la réponse avec la commande 'apprends'."
   fi
 }
 
+# 🧠 Module d'Apprentissage Actif
+module_apprentissage() {
+  # Syntaxe : "apprends que [sujet] est [définition]"
+  sujet=$(echo "$1" | sed -n "s/apprends que \(.*\) est .*/\1/p")
+  definition=$(echo "$1" | sed -n "s/.* est \(.*\)/\1/p")
+  
+  if [ -n "$sujet" ] && [ -n "$definition" ]; then
+    # On supprime l'ancienne entrée au cas où
+    grep -vi "^${sujet}:" "$CORPUS_APPRENTISSAGE" > "${CORPUS_APPRENTISSAGE}.tmp" && mv "${CORPUS_APPRENTISSAGE}.tmp" "$CORPUS_APPRENTISSAGE"
+    # On ajoute la nouvelle connaissance
+    echo "${sujet}:${definition}" >> "$CORPUS_APPRENTISSAGE"
+    typing "Connaissance acquise. Je sais maintenant que '$sujet' est '$definition'."
+  else
+    typing "Syntaxe d'apprentissage incorrecte. Utilisez : apprends que [sujet] est [définition]"
+  fi
+}
 
-#################################################################
-# 🤖 CŒUR DU BOT (INITIALISATION ET BOUCLE PRINCIPALE) 🤖       #
-#################################################################
+# 🤖 Cœur du bot et utilitaires
+typing() { [ -n "$1" ] && echo -e "$1"; }
 
-typing() { [ -n "$1" ] && echo "$1"; }
+# --- INITIALISATION ---
+touch "$CORPUS_APPRENTISSAGE"
+typing "--- Bot-Shell-Omega v8.0 en ligne. Module d'apprentissage actif. ---"
 
-typing "--- Bot-Shell-Titanium v5.0 en ligne. Stabilité structurelle confirmée. ---"
-
-# BOUCLE PRINCIPALE AVEC AIGUILLEUR ROBUSTE (if/elif/else)
+# --- BOUCLE PRINCIPALE ---
 while true; do
   printf "Vous> "
   read input
   input_lower=$(echo "$input" | tr '[:upper:]' '[:lower:]')
 
   if [ -z "$input_lower" ]; then
-    continue # Ignore l'entrée vide
-  elif echo "$input_lower" | grep -qE "bonjour|salut|merci"; then
-    module_conversation "$input_lower"
-  elif echo "$input_lower" | grep -q "blague"; then
-    module_blague
-  elif echo "$input_lower" | grep -qE "cpu|ram|mémoire|disque"; then
-    module_moniteur_systeme "$input_lower"
-  elif echo "$input_lower" | grep -q "une citation|sagesse"; then
-    module_sagesse
+    continue
+  elif echo "$input_lower" | grep -qE "bonjour|salut"; then
+    module_conversation
+  elif echo "$input_lower" | grep -q "apprends que"; then
+    module_apprentissage "$input_lower"
   elif echo "$input_lower" | grep -qE "cherche|c'est quoi|qui est|définition de"; then
-    module_recherche_web "$input_lower"
+    module_recherche_wikipedia "$input_lower"
   elif echo "$input_lower" | grep -qE "au revoir|quitter|bye"; then
-    typing "Arrêt du système."
+    typing "Mise en veille."
     break
   else
-    typing "Commande non interprétable. Mots-clés : cpu, ram, disque, cherche, citation..."
+    typing "Commande non reconnue. Essayez 'cherche [sujet]' ou 'apprends que [sujet] est [définition]'."
   fi
 done

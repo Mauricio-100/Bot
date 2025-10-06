@@ -1,13 +1,14 @@
 {
   "name": "corpus-serveur",
-  "version": "1.0.0",
-  "description": "Cerveau externe pour le Bot-Shell",
+  "version": "2.0.0",
+  "description": "Cerveau externe avancé pour le Bot-Shell",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "body-parser": "^1.20.2"
+    "body-parser": "^1.20.2",
+    "mathjs": "^11.5.0"
   }
 }

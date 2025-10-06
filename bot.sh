@@ -1,5 +1,5 @@
 #!/bin/sh
-# Bot-Shell-Phoenix V2 - v13.0 - Robuste, corrigé et fiable.
+# Bot-Shell-Adamantium - v14.0 - Version finale, stable et robuste.
 
 # --- CONFIGURATION & DÉTECTION DE L'OS ---
 CORPUS_URL="https://bot-tve8.onrender.com"
@@ -13,50 +13,35 @@ esac
 # --- BIBLIOTHÈQUE D'INTERFACE UTILISATEUR (UI) ---
 C_RESET='\033[0m'; C_BLUE='\033[0;34m'; C_GREEN='\033[0;32m'; C_YELLOW='\033[0;33m'; C_RED='\033[0;31m'; C_GRAY='\033[0;90m'
 
+# Spinner simple et ultra-compatible
 spinner() {
     local pid=$1
+    local spinstr='|/-\'
     while ps -p $pid > /dev/null; do
-        for c in "⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏"; do
-            printf "${C_BLUE} [%s]  ${C_RESET}" "$c"
-            sleep 0.1
-            printf "\b\b\b\b\b\b"
-        done
+        local temp=${spinstr#?}
+        printf "${C_BLUE} [%c]  ${C_RESET}" "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep 0.1
+        printf "\b\b\b\b\b\b"
     done
-}
-
-# Fonction pour exécuter une commande avec un spinner
-run_with_spinner() {
-    # Exécute la commande en arrière-plan et redirige sa sortie vers un fichier temporaire
-    "$@" > /tmp/bot_cmd_output.txt 2>&1 &
-    local pid=$!
-    spinner $pid
-    # Récupère le code de sortie et le contenu du fichier
-    wait $pid
-    local exit_code=$?
-    local output=$(cat /tmp/bot_cmd_output.txt)
-    rm /tmp/bot_cmd_output.txt
-    
-    # Renvoyer les résultats
-    CMD_OUTPUT="$output"
-    return $exit_code
 }
 
 typing_color() { echo -e "${1}${2}${C_RESET}"; }
 show_footer() { typing_color "$C_GRAY" "\ncréé par mauricio-100"; }
 
-# --- MODULES CORRIGÉS ---
+# --- MODULES FINAUX ---
 
 module_aide() {
-    typing_color "$C_YELLOW" "--- Manuel d'Opération Bot-Shell-Phoenix V2 ---"
+    typing_color "$C_YELLOW" "--- Manuel d'Opération Bot-Shell-Adamantium ---"
     echo -e "${C_GREEN} bonjour / salut   ${C_RESET}- Pour saluer le bot."
     echo -e "${C_GREEN} cherche [sujet]   ${C_RESET}- Recherche une information."
-    echo -e "${C_GREEN} calcule [opération]${C_RESET}- Calculateur mathématique (ex: 21 * (30 * 34) + 21)."
+    echo -e "${C_GREEN} calcule [opération]${C_RESET}- Calculateur mathématique (ex: 21 * (30 * 34))."
     echo -e "${C_GREEN} system            ${C_RESET}- Affiche les informations système."
     typing_color "$C_YELLOW" "----------------------------------------------------"
 }
 
 module_conversation() {
-    typing_color "$C_GREEN" "Bonjour ! Je suis prêt à vous assister."
+    typing_color "$C_GREEN" "Bonjour ! Je suis prêt."
 }
 
 module_system() {
@@ -70,9 +55,13 @@ module_recherche() {
   url_query=$(echo "$query" | sed 's/ /%20/g')
   
   typing_color "$C_BLUE" "-> Connexion à la mémoire centrale..."
-  run_with_spinner curl -s -w "\n%{http_code}" "${CORPUS_URL}/corpus/${url_query}"
+  # Logique de spinner directe
+  curl -s -w "\n%{http_code}" "${CORPUS_URL}/corpus/${url_query}" > /tmp/bot_output.tmp &
+  pid=$!
+  spinner $pid
+  response_corpus=$(cat /tmp/bot_output.tmp)
+  rm /tmp/bot_output.tmp
   
-  response_corpus="$CMD_OUTPUT"
   http_code=$(tail -n1 <<< "$response_corpus")
   content=$(sed '$d' <<< "$response_corpus")
 
@@ -83,12 +72,18 @@ module_recherche() {
 
   typing_color "$C_BLUE" "-> Information non mémorisée. Accès à Wikipedia..."
   wiki_url_query=$(echo "$query" | sed 's/ /_/g')
-  run_with_spinner curl -s -A "Bot-Shell-Phoenix/13.0" "https://fr.wikipedia.org/api/rest_v1/page/summary/${wiki_url_query}"
   
-  wiki_response=$(echo "$CMD_OUTPUT" | jq -r '.extract')
+  # Logique de spinner directe
+  curl -s -A "Bot-Shell-Adamantium/14.0" "https://fr.wikipedia.org/api/rest_v1/page/summary/${wiki_url_query}" > /tmp/bot_output.tmp &
+  pid=$!
+  spinner $pid
+  wiki_content=$(cat /tmp/bot_output.tmp)
+  rm /tmp/bot_output.tmp
+  
+  wiki_response=$(echo "$wiki_content" | jq -r '.extract')
   if [ -n "$wiki_response" ] && [ "$wiki_response" != "null" ]; then
     typing_color "$C_GREEN" "$wiki_response"
-    # ... (le code d'apprentissage reste le même)
+    # ... (code d'apprentissage)
   else
     typing_color "$C_RED" "Aucune information trouvée sur aucune source."
   fi
@@ -99,9 +94,13 @@ module_calcul() {
   typing_color "$C_BLUE" "-> Transmission au module de calcul distant..."
   json_payload=$(jq -n --arg expr "$expression" '{expression: $expr}')
   
-  run_with_spinner curl -s -w "\n%{http_code}" -X POST -H "Content-Type: application/json" -d "$json_payload" "${CORPUS_URL}/calculate"
-  
-  response_calc="$CMD_OUTPUT"
+  # Logique de spinner directe
+  curl -s -w "\n%{http_code}" -X POST -H "Content-Type: application/json" -d "$json_payload" "${CORPUS_URL}/calculate" > /tmp/bot_output.tmp &
+  pid=$!
+  spinner $pid
+  response_calc=$(cat /tmp/bot_output.tmp)
+  rm /tmp/bot_output.tmp
+
   http_code=$(tail -n1 <<< "$response_calc")
   content=$(sed '$d' <<< "$response_calc")
 
@@ -109,12 +108,12 @@ module_calcul() {
     typing_color "$C_GREEN" "Résultat : $(echo "$content" | jq -r '.result')"
   else
     typing_color "$C_RED" "Erreur du module de calcul : $(echo "$content" | jq -r '.error')"
-    typing_color "$C_GRAY" "Astuce : assurez-vous d'utiliser '*' pour la multiplication."
+    typing_color "$C_GRAY" "Astuce : assurez-vous que la syntaxe est correcte (ex: 5 * (2+2))."
   fi
 }
 
 # --- CŒUR DU BOT ---
-typing_color "$C_GREEN" "--- Bot-Shell-Phoenix V2 activé ---"
+typing_color "$C_GREEN" "--- Bot-Shell-Adamantium v14.0 activé ---"
 typing_color "$C_GRAY" "Tapez 'aide' pour voir la liste des commandes."
 
 while true; do

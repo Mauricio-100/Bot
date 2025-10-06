@@ -2,12 +2,11 @@
 # Bot-Shell-Colossus - v10.0 - Client lourd avec de multiples outils et modules.
 
 # --- CONFIGURATION ---
-# URL de votre cerveau externe sur Render
+# L'URL de VOTRE cerveau externe sur Render
 CORPUS_URL="https://bot-tve8.onrender.com"
 
 # --- MODULES AVANCÉS ---
 
-# Module d'aide : La commande la plus importante !
 module_aide() {
   typing "--- Manuel d'Opération Bot-Shell-Colossus ---"
   typing " cherche [sujet]   \t- Interroge le cerveau et Wikipedia."
@@ -19,12 +18,10 @@ module_aide() {
   typing " quitter           \t- Termine la session."
 }
 
-# Module de Recherche et d'Apprentissage (amélioré)
 module_recherche() {
   query=$(echo "$1" | sed -E "s/cherche //i")
   url_query=$(echo "$query" | sed 's/ /%20/g')
   
-  # 1. Interroger le cerveau externe
   response_corpus=$(curl -s -w "\n%{http_code}" "${CORPUS_URL}/corpus/${url_query}")
   http_code=$(tail -n1 <<< "$response_corpus") && content=$(sed '$d' <<< "$response_corpus")
   if [ "$http_code" -eq 200 ]; then
@@ -32,7 +29,6 @@ module_recherche() {
     return
   fi
 
-  # 2. Si inconnu, interroger Wikipedia
   typing "Info non mémorisée. Accès à Wikipedia..."
   wiki_url_query=$(echo "$query" | sed 's/ /_/g')
   wiki_response=$(curl -s -A "Bot-Shell-Colossus/10.0" "https://fr.wikipedia.org/api/rest_v1/page/summary/${wiki_url_query}" | jq -r '.extract')
@@ -51,7 +47,6 @@ module_recherche() {
   fi
 }
 
-# Module de Calcul via API
 module_calcul() {
   expression=$(echo "$1" | sed 's/calcule //i')
   typing "Transmission de l'expression au module de calcul..."
@@ -67,14 +62,12 @@ module_calcul() {
   fi
 }
 
-# Module QR Code
 module_qr_code() {
   data=$(echo "$1" | sed -E 's/qr pour //i')
   typing "Génération du QR Code pour : $data"
   curl -s "qrenco.de/$data"
 }
 
-# Module Outils Réseau
 module_outils_reseau() {
   sub_command=$(echo "$1" | awk '{print $2}')
   target=$(echo "$1" | awk '{print $3}')
@@ -85,7 +78,6 @@ module_outils_reseau() {
   esac
 }
 
-# Module Statut Système
 module_statut_systeme() {
   typing "--- Statut du Système Local ---"
   typing "OS: $(uname -s -r)"
@@ -93,7 +85,6 @@ module_statut_systeme() {
   typing "Charge CPU (1 min): $(uptime | awk -F'load average: ' '{print $2}' | cut -d, -f1)"
 }
 
-# --- CŒUR DU BOT ---
 typing() { [ -n "$1" ] && echo -e "$1"; }
 typing "--- Bot-Shell-Colossus v10.0 connecté à ${CORPUS_URL} ---"
 typing "Tapez 'aide' pour voir la liste des commandes."

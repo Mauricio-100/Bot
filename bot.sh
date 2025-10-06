@@ -3,7 +3,7 @@
 
 # --- CONFIGURATION ---
 # REMPLACEZ CETTE URL PAR CELLE DE VOTRE SERVEUR RENDER !
-CORPUS_URL="https://mon-corpus-bot.onrender.com" 
+CORPUS_URL="https://bot-tve8.onrender.com"
 
 # --- MODULES ---
 

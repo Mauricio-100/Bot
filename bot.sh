@@ -1,11 +1,71 @@
 #!/bin/sh
-# Bot-Shell-Web - Un bot Shell avec accès au web via l'API DuckDuckGo
+# Bot-Shell-Modular - Un bot Shell avec un cerveau modulaire
 
-# --- PRÉREQUIS ---
-# Assurez-vous d'avoir installé jq : apk add jq
-# -----------------
+# --- MODULES CÉRÉBRAUX (FONCTIONS) ---
 
-# Fonction pour que le bot "tape" sa réponse
+# Module pour les conversations de base
+module_conversation() {
+  case $(echo "$1" | tr '[:upper:]' '[:lower:]') in
+    *bonjour*|*salut*)
+      typing "Salut ! Comment puis-je vous aider aujourd'hui ?"
+      ;;
+    *ça va*)
+      typing "Je suis un programme, donc je fonctionne à plein régime ! Et vous ?"
+      ;;
+  esac
+}
+
+# Module pour donner l'heure et la date
+module_temps() {
+  case $(echo "$1" | tr '[:upper:]' '[:lower:]') in
+    *heure*)
+      typing "Il est exactement $(date +'%H heures et %M minutes')."
+      ;;
+    *date*)
+      typing "Nous sommes le $(date +'%A %d %B %Y')."
+      ;;
+  esac
+}
+
+# Module pour faire des calculs
+module_calcul() {
+  # Retire le mot "calcule" pour n'avoir que l'opération
+  operation=$(echo "$1" | sed 's/calcule //i')
+  # Tente le calcul et gère les erreurs
+  resultat=$(LC_NUMERIC=C awk "BEGIN {print $operation}")
+  if [ $? -eq 0 ]; then
+    typing "Le résultat de $operation est $resultat."
+  else
+    typing "Désolé, je n'ai pas pu comprendre ce calcul."
+  fi
+}
+
+# Module pour chercher sur le web avec l'API DuckDuckGo
+module_recherche_web() {
+  typing "Un instant, je consulte ma base de données mondiale..."
+  query=$(echo "$1" | sed -E -e 's/cherche //i' -e "s/c'est quoi //i" -e 's/sais-tu que //i' -e 's/qui est //i')
+  url_query=$(echo "$query" | sed 's/ /+/g')
+  api_response=$(curl -s "https://api.duckduckgo.com/?q=${url_query}&format=json" | jq -r '.AbstractText')
+
+  if [ -n "$api_response" ] && [ "$api_response" != "null" ]; then
+    typing "$api_response"
+  else
+    typing "Je n'ai rien trouvé de concluant pour '$query'."
+  fi
+}
+
+# NOUVEAU : Module pour donner des infos sur le système
+module_systeme() {
+    typing "Voici quelques informations sur le système sur lequel je fonctionne :"
+    typing "Type de système : $(uname -s)"
+    typing "Architecture : $(uname -m)"
+    # La commande 'free' ou 'df' peut être limitée sur iSH, mais on essaie
+    typing "Utilisation de la mémoire : $(free -h | grep Mem | awk '{print $3 "/" $2}')"
+}
+
+
+# --- UTILITAIRES ---
+# Fonction pour simuler la frappe
 typing() {
   text="$1"
   delay=0.03
@@ -16,64 +76,37 @@ typing() {
   echo ""
 }
 
-# Salutation de départ
-typing "Bonjour ! Je suis Bot-Shell-Web. Posez-moi une question ou demandez-moi de chercher quelque chose."
+# --- DÉMARRAGE DU BOT ---
+typing "Bonjour ! Je suis Bot-Shell-Modular. Mon cerveau a été mis à jour."
 
-# Boucle principale du bot
+# --- BOUCLE PRINCIPALE (LE CERVEAU / AIGUILLEUR) ---
 while true; do
-  printf "> "
+  printf "Vous> "
   read input
 
-  # Le CERVEAU du bot
+  # L'aiguilleur qui envoie l'input au bon module
   case $(echo "$input" | tr '[:upper:]' '[:lower:]') in
-    *bonjour*|*salut*)
-      typing "Salut ! En quoi puis-je vous aider ?"
+    *bonjour*|*salut*|*ça va*)
+      module_conversation "$input"
       ;;
-
-    *heure*)
-      typing "Il est $(date +'%H heures et %M minutes')."
+    *heure*|*date*)
+      module_temps "$input"
       ;;
-
-    # --- NOUVELLE FONCTIONNALITÉ : RECHERCHE WEB ---
-    *cherche*|*c\'est quoi*|*sais-tu*|*qui est*)
-      typing "Un instant, je cherche sur le web..."
-
-      # 1. Isoler la question de recherche
-      # On supprime les mots-clés comme "cherche ", "c'est quoi ", etc.
-      query=$(echo "$input" | sed -E -e 's/cherche //i' -e "s/c'est quoi //i" -e 's/sais-tu que //i' -e 's/qui est //i')
-
-      # 2. Formater la question pour une URL (remplace les espaces par '+')
-      url_query=$(echo "$query" | sed 's/ /+/g')
-
-      # 3. Appeler l'API avec curl et extraire la réponse avec jq
-      # -s pour le mode silencieux
-      # jq -r '.AbstractText' prend le champ AbstractText et l'affiche en texte brut (sans les guillemets)
-      api_response=$(curl -s "https://api.duckduckgo.com/?q=${url_query}&format=json" | jq -r '.AbstractText')
-
-      # 4. Vérifier si une réponse a été trouvée
-      if [ -n "$api_response" ] && [ "$api_response" != "null" ]; then
-        typing "$api_response"
-      else
-        typing "Désolé, je n'ai trouvé aucune réponse directe pour '$query'."
-      fi
-      ;;
-
-    # --- FIN DE LA NOUVELLE FONCTIONNALITÉ ---
-
     *calcule*)
-      operation=$(echo "$input" | sed 's/calcule //i')
-      # On utilise $((...)) qui est plus moderne et puissant que expr
-      resultat=$(($operation))
-      typing "Le résultat de $operation est $resultat."
+      module_calcul "$input"
       ;;
-
+    *cherche*|*c\'est quoi*|*sais-tu*|*qui est*)
+      module_recherche_web "$input"
+      ;;
+    *système*|*info système*)
+      module_systeme
+      ;;
     *au revoir*|*quitter*|*bye*)
-      typing "Au revoir ! N'hésitez pas si vous avez d'autres questions."
+      typing "Opération terminée. Au revoir."
       break
       ;;
-
     *)
-      typing "Je ne comprends pas. Vous pouvez me demander de calculer quelque chose, de donner l'heure, ou de chercher une information (ex: 'cherche la hauteur de la tour eiffel')."
+      typing "Commande non reconnue. Essayez 'cherche', 'calcule', 'date', 'heure' ou 'info système'."
       ;;
   esac
 done
